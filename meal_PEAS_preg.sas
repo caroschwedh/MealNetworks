@@ -3,7 +3,7 @@
 * Program: 		meal_PEAS_preg
 * Author: 		Carolina Schwedhelm
 * Created: 		09/18/2019
-* Last Changes: 09/26/2019, by Carolina Schwedhelm
+* Last Changes: 10/11/2019, by Carolina Schwedhelm
 * Origin: 		self made
 * Category: 	creation of dataset
 * Program before: 	Autoexec
@@ -31,21 +31,39 @@ run;																						* EPW 184 missing;
 proc means data=base n nmiss;																* HEI_post 191 missing;
 	var BMIgroup gwg_iom EPW_ever HEI2015_TOT_PREG HEI2015_TOT_POST;
 run;
-*make HEI quartiles;
-proc means data=base q1 q3;
-var HEI2015_TOT_PREG HEI2015_TOT_POST;
+*make HEI tertiles;
+proc rank data= base groups=3 out=base;
+	var HEI2015_TOT_PREG HEI2015_TOT_POST;
+	ranks HEI_PREG_TERT HEI_POST_TERT;
 run;
-data base_q; set base;
-	if HEI2015_TOT_PREG <= 49.02475 then HEI_PREG_Q = 1;
-	if HEI2015_TOT_PREG > 66.5699 then HEI_PREG_Q = 4;
-	if HEI2015_TOT_POST <= 47.72087 then HEI_POST_Q = 1;
-	if HEI2015_TOT_POST > 67.49218 then HEI_POST_Q = 4;
-run;
+*rename tertiles;
+data base; set base;
+	if HEI_PREG_TERT = 2 then HEI_PREG_TERT = 3;
+	if HEI_PREG_TERT = 1 then HEI_PREG_TERT = 2;
+	if HEI_PREG_TERT = 0 then HEI_PREG_TERT = 1;
 
-proc sort data=base_q; by patid;
+	if HEI_POST_TERT = 2 then HEI_POST_TERT = 3;
+	if HEI_POST_TERT = 1 then HEI_POST_TERT = 2;
+	if HEI_POST_TERT = 0 then HEI_POST_TERT = 1;
+run;	
+/*
+*check tertiles;
+proc sort data=base; by HEI_PREG_TERT;
+proc means data=base;
+var HEI2015_TOT_PREG;
+by HEI_PREG_TERT;
+run;
+proc sort data=base; by HEI_POST_TERT;
+proc means data=base;
+var HEI2015_TOT_POST;
+by HEI_POST_TERT;
+run;
+*/
+
+proc sort data=base; by patid;
 proc sort data=infitems_meals_wide; by patid;
 data PEAS_meal_networks;
-	merge infitems_meals_wide (in=a) base_q;
+	merge infitems_meals_wide (in=a) base;
 	by patid;
 	if a;
 run;
@@ -151,32 +169,32 @@ proc univariate data=base;
 run;														* 58.2 = median POST;
 */
 *breakfast;
-data PREG_HEIQ1_occ1; set PEAS_meal_networks;
-	where pregpost = 1 and occ_name = 1 and HEI_PREG_Q = 1;
+data PREG_HEI_T1_occ1; set PEAS_meal_networks;
+	where pregpost = 1 and occ_name = 1 and HEI_PREG_TERT = 1;
 run;
-data PREG_HEIQ4_occ1; set PEAS_meal_networks;
-	where pregpost = 1 and occ_name = 1 and HEI_PREG_Q  = 4;
+data PREG_HEI_T3_occ1; set PEAS_meal_networks;
+	where pregpost = 1 and occ_name = 1 and HEI_PREG_TERT  = 3;
 run;
 
 *lunch;
-data PREG_HEIQ1_occ3; set PEAS_meal_networks;
-	where pregpost = 1 and occ_name = 3 and HEI_PREG_Q  = 1;
+data PREG_HEI_T1_occ3; set PEAS_meal_networks;
+	where pregpost = 1 and occ_name = 3 and HEI_PREG_TERT  = 1;
 run;
-data PREG_HEIQ4_occ3; set PEAS_meal_networks;
-	where pregpost = 1 and occ_name = 3 and HEI_PREG_Q = 4;
+data PREG_HEI_T3_occ3; set PEAS_meal_networks;
+	where pregpost = 1 and occ_name = 3 and HEI_PREG_TERT = 3;
 run;
 
 *dinner;
-data PREG_HEIQ1_occ4; set PEAS_meal_networks;
-	where pregpost = 1 and occ_name in (4,5) and HEI_PREG_Q  = 1;
+data PREG_HEI_T1_occ4; set PEAS_meal_networks;
+	where pregpost = 1 and occ_name in (4,5) and HEI_PREG_TERT  = 1;
 run;
-data PREG_HEIQ4_occ4; set PEAS_meal_networks;
-	where pregpost = 1 and occ_name in (4,5) and HEI_PREG_Q = 4;
+data PREG_HEI_T3_occ4; set PEAS_meal_networks;
+	where pregpost = 1 and occ_name in (4,5) and HEI_PREG_TERT = 3;
 run;
 
 /*
 *Nr participants;
-proc means data=PREG_HEIQ4_occ4 noprint;
+proc means data=PREG_HEI_T3_occ1 noprint;
 	class patid;
 	ways 1;
 	var tot_foodamt;
@@ -194,7 +212,7 @@ libname out 'C:\Users\schwedhelmramc2\Documents\PEAS data_M1/PREG/';
 data out.PREG_BMI1_occ1;
 	set PREG_BMI1_occ1;
 	drop 	patid pregpost visit recallno occ_no occ_name _FREQ_ tot_foodamt 
-			BMIgroup gwg_iom EPW_ever HEI2015_TOT_PREG HEI2015_tot_post HEI_PREG_Q HEI_POST_Q
+			BMIgroup gwg_iom EPW_ever HEI2015_TOT_PREG HEI2015_tot_post HEI_PREG_TERT HEI_POST_TERT
 			food_17 food_40;
 	rename 	food_1 = Milk_drinks					food_2 = Milk_desserts					food_3 = Cheese
 			food_4 = Poultry						food_5 = Fish_shellfish					food_6 = Meat
@@ -230,7 +248,7 @@ run;
 data out.PREG_BMI2_3_occ1;
 	set PREG_BMI2_3_occ1;
 	drop 	patid pregpost visit recallno occ_no occ_name _FREQ_ tot_foodamt 
-			BMIgroup gwg_iom EPW_ever HEI2015_TOT_PREG HEI2015_tot_post HEI_PREG_Q HEI_POST_Q
+			BMIgroup gwg_iom EPW_ever HEI2015_TOT_PREG HEI2015_tot_post HEI_PREG_TERT HEI_POST_TERT
 			food_38 food_40;
 run;
 * dataset with frequency eaten;
@@ -291,8 +309,8 @@ data out.PREG_BMI1_occ3;
 			food_37 = Sugar_sweetened_drinks		food_38 = Alcoholic_drinks				food_39 = Water;
 run;
 
-data out.PREG_BMI2_occ3;
-	set PREG_BMI2_occ3;
+data out.PREG_BMI2_3_occ3;
+	set PREG_BMI2_3_occ3;
 	drop 	patid pregpost visit recallno occ_no occ_name _FREQ_ tot_foodamt 
 			BMIgroup gwg_iom EPW_ever HEI2015_TOT_PREG HEI2015_TOT_POST
 			food_38 food_40;
@@ -304,25 +322,6 @@ data out.PREG_BMI2_occ3;
 			food_16 = Patties_loaves				food_17 = Pasta_based					food_18 = Tortilla_based			 	
 			food_19 = Mayonnaise_salads				food_20 = Pastas_rice					food_21 = Crackers_salty_snacks
 			food_22 = Breakfast_cereals_high_sugar	food_23 = Breakfast_cereals_low_sugar	food_24 = Fruit_juice
-			food_25 = Whole_fruits					food_26 = Potatoes						food_27 = Potatoes_fried
-			food_28 = DG_vegetables					food_29 = RO_vegetables					food_30 = Other_vegetables
-			food_31 = Solid_fats					food_32 = Oils							food_33 = Sauces
-			food_34 = Soups							food_35 = Sugars_sweets					food_36 = Coffee_tea
-			food_37 = Sugar_sweetened_drinks												food_39 = Water;
-run;
-data out.PREG_BMI3_occ3;
-	set PREG_BMI3_occ3;
-	drop 	patid pregpost visit recallno occ_no occ_name _FREQ_ tot_foodamt 
-			BMIgroup gwg_iom EPW_ever HEI2015_TOT_PREG HEI2015_TOT_POST
-			food_23 food_38 food_40;
-	rename 	food_1 = Milk_drinks					food_2 = Milk_desserts					food_3 = Cheese
-			food_4 = Poultry						food_5 = Fish_shellfish					food_6 = Meat
-			food_7 = Cured_meat						food_8 = Eggs							food_9 = Legumes_nuts_seeds
-			food_10 = Breads_refined				food_11 = Breads_whole					food_12 = Cakes_cookies
-			food_13 = Pancakes_other				food_14 = Savory_pies					food_15 = Sandwiches
-			food_16 = Patties_loaves				food_17 = Pasta_based					food_18 = Tortilla_based			 	
-			food_19 = Mayonnaise_salads				food_20 = Pastas_rice					food_21 = Crackers_salty_snacks
-			food_22 = Breakfast_cereals_high_sugar											food_24 = Fruit_juice
 			food_25 = Whole_fruits					food_26 = Potatoes						food_27 = Potatoes_fried
 			food_28 = DG_vegetables					food_29 = RO_vegetables					food_30 = Other_vegetables
 			food_31 = Solid_fats					food_32 = Oils							food_33 = Sauces
@@ -352,8 +351,8 @@ data out.PREG_BMI1_occ4;
 			food_34 = Soups							food_35 = Sugars_sweets					food_36 = Coffee_tea
 			food_37 = Sugar_sweetened_drinks		food_38 = Alcoholic_drinks				food_39 = Water;
 run;
-data out.PREG_BMI2_occ4;
-	set PREG_BMI2_occ4;
+data out.PREG_BMI2_3_occ4;
+	set PREG_BMI2_3_occ4;
 	drop 	patid pregpost visit recallno occ_no occ_name _FREQ_ tot_foodamt 
 			BMIgroup gwg_iom EPW_ever HEI2015_TOT_PREG HEI2015_TOT_POST
 			food_38 food_40;
@@ -370,25 +369,6 @@ data out.PREG_BMI2_occ4;
 			food_31 = Solid_fats					food_32 = Oils							food_33 = Sauces
 			food_34 = Soups							food_35 = Sugars_sweets					food_36 = Coffee_tea
 			food_37 = Sugar_sweetened_drinks												food_39 = Water;
-run;
-data out.PREG_BMI3_occ4;
-	set PREG_BMI3_occ4;
-	drop 	patid pregpost visit recallno occ_no occ_name _FREQ_ tot_foodamt 
-			BMIgroup gwg_iom EPW_ever HEI2015_TOT_PREG HEI2015_TOT_POST
-			food_40;
-	rename 	food_1 = Milk_drinks					food_2 = Milk_desserts					food_3 = Cheese
-			food_4 = Poultry						food_5 = Fish_shellfish					food_6 = Meat
-			food_7 = Cured_meat						food_8 = Eggs							food_9 = Legumes_nuts_seeds
-			food_10 = Breads_refined				food_11 = Breads_whole					food_12 = Cakes_cookies
-			food_13 = Pancakes_other				food_14 = Savory_pies					food_15 = Sandwiches
-			food_16 = Patties_loaves				food_17 = Pasta_based					food_18 = Tortilla_based			 	
-			food_19 = Mayonnaise_salads				food_20 = Pastas_rice					food_21 = Crackers_salty_snacks
-			food_22 = Breakfast_cereals_high_sugar	food_23 = Breakfast_cereals_low_sugar	food_24 = Fruit_juice
-			food_25 = Whole_fruits					food_26 = Potatoes						food_27 = Potatoes_fried
-			food_28 = DG_vegetables					food_29 = RO_vegetables					food_30 = Other_vegetables
-			food_31 = Solid_fats					food_32 = Oils							food_33 = Sauces
-			food_34 = Soups							food_35 = Sugars_sweets					food_36 = Coffee_tea
-			food_37 = Sugar_sweetened_drinks		food_38 = Alcoholic_drinks				food_39 = Water;
 run;
 
 
