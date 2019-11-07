@@ -1,6 +1,6 @@
 # MealNetworks
 
-Aims, hypotheses, methods, and an example network are provided in the document AIMS_METHODS_11_7.docx
+Aims, hypotheses, and methods are provided in the document AIMS_METHODS_11_7.docx
 
 Step-by-step food grouping.docx contains the detailed procedure of how foods were grouped and the food group keys.
 
